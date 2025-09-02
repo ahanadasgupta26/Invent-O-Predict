@@ -18,7 +18,6 @@ function App() {
         {/* Navbar always at top */}
         <ScrollToTop/>
         <Navbar />
-
         {/* Page content fills remaining space */}
         <main className="flex-grow">
           <Routes>
