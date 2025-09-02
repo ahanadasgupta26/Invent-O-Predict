@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import Contact from './pages/Contact';
 import ScrollToTop from './components/ScrollToTop';
+import ChatBot from './components/ChatBot';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         {/* Navbar always at top */}
         <ScrollToTop/>
         <Navbar />
+
         {/* Page content fills remaining space */}
         <main className="flex-grow">
           <Routes>
@@ -33,6 +35,9 @@ function App() {
 
         {/* Footer always at bottom */}
         <Footer />
+
+
+        <ChatBot/>
       </div>
     </Router>
   );
