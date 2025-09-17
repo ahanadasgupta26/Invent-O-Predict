@@ -1,6 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+import os
+import tempfile
+from model.predict import predict_stockout
 
 app = Flask(__name__)
 CORS(app)
@@ -72,6 +75,33 @@ def get_feedback():
         for f in feedbacks
     ]
     return jsonify(result)
+
+# ---------------- Prediction Route ----------------
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+
+    # Save temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        pred_df = predict_stockout(tmp_path)
+        os.remove(tmp_path)
+
+        # Convert dataframe to JSON
+        result = pred_df.to_dict(orient="records")
+        return jsonify({"summary": "Stock prediction analysis completed.", "fields": result})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # ---------------- Run App ----------------
 if __name__ == '__main__':
