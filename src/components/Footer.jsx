@@ -15,7 +15,7 @@ const Footer = () => {
             />
             <Link to="/">
               <span>
-                Predicto<span className="text-blue-800">Stock</span>
+                Invent<span className="text-blue-800">O<span className="text-blue-800">Predict</span></span>
               </span>
             </Link>
           </div>

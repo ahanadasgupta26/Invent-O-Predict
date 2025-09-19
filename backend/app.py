@@ -3,12 +3,17 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import os
 import tempfile
+import google.generativeai as genai  
 from model.predict import predict_stockout
 
+# ---------------- API KEY ----------------
+API_KEY = "API KEY" 
+genai.configure(api_key=API_KEY)
+
+# ---------------- App Config ----------------
 app = Flask(__name__)
 CORS(app)
 
-# ---------------- Configuration ----------------
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -102,6 +107,27 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ---------------- Chatbot Route ----------------
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    message = data.get('message', '')
+    context = data.get('context', '')
+
+    try:
+        # Initialize model
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        # Create prompt
+        prompt = f"{context}\n\nUser: {message}\nAI:"
+        response = model.generate_content(prompt)
+
+        reply = response.text if response and hasattr(response, "text") else "No response generated."
+
+    except Exception as e:
+        reply = f"Error: {str(e)}"
+
+    return jsonify({"reply": reply})
 
 # ---------------- Run App ----------------
 if __name__ == '__main__':

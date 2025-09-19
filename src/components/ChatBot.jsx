@@ -1,12 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send } from "lucide-react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import projectInfo from "./info"; // training context
-
-//  For practice only: API key here exposes it in frontend
-const API_KEY = "API_KEY";
-const genAI = new GoogleGenerativeAI(API_KEY);
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +9,7 @@ const ChatBot = () => {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false); // typing state
   const chatRef = useRef(null);
-  const bottomRef = useRef(null); //  auto-scroll reference
+  const bottomRef = useRef(null); // auto-scroll reference
 
   // Close chatbot when clicking outside
   useEffect(() => {
@@ -41,23 +36,26 @@ const ChatBot = () => {
     setMessages((prev) => [...prev, { text: input, sender: "user" }]);
     const userInput = input;
     setInput("");
-    setTyping(true); // show typing indicator
+    setTyping(true);
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `${projectInfo}\n\nUser: ${userInput}\nAI:`;
+      // ✅ Call Flask backend instead of Gemini directly
+      const res = await fetch("http://localhost:5000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userInput, context: projectInfo }),
+      });
 
-      const result = await model.generateContent(prompt);
-      const reply = result.response.text();
+      const data = await res.json();
 
-      setTyping(false); // stop typing
-      setMessages((prev) => [...prev, { text: reply, sender: "bot" }]);
+      setTyping(false);
+      setMessages((prev) => [...prev, { text: data.reply, sender: "bot" }]);
     } catch (err) {
       console.error(err);
       setTyping(false);
       setMessages((prev) => [
         ...prev,
-        { text: " Couldn’t Answer your Question now, Please try After Sometime", sender: "bot" },
+        { text: "Couldn’t Answer your Question now, Please try After Sometime", sender: "bot" },
       ]);
     }
   };
