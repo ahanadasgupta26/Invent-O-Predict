@@ -125,7 +125,8 @@ def chat():
         reply = response.text if response and hasattr(response, "text") else "No response generated."
 
     except Exception as e:
-        reply = f"Error: {str(e)}"
+        #reply = f"Error: {str(e)}" ----- This prints error
+        reply = "Error getting the message, please try again later" # ------this sends error message 
 
     return jsonify({"reply": reply})
 
