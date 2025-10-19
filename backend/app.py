@@ -1,11 +1,19 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+import os
+import tempfile
+import google.generativeai as genai  
+from model.predict import predict_stockout
 
+# ---------------- API KEY ----------------
+API_KEY = "API KEY" 
+genai.configure(api_key=API_KEY)
+
+# ---------------- App Config ----------------
 app = Flask(__name__)
 CORS(app)
 
-# ---------------- Configuration ----------------
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -72,6 +80,55 @@ def get_feedback():
         for f in feedbacks
     ]
     return jsonify(result)
+
+# ---------------- Prediction Route ----------------
+@app.route('/predict', methods=['POST'])
+def predict():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+
+    # Save temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        pred_df = predict_stockout(tmp_path)
+        os.remove(tmp_path)
+
+        # Convert dataframe to JSON
+        result = pred_df.to_dict(orient="records")
+        return jsonify({"summary": "Stock prediction analysis completed.", "fields": result})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ---------------- Chatbot Route ----------------
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    message = data.get('message', '')
+    context = data.get('context', '')
+
+    try:
+        # Initialize model
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
+        # Create prompt
+        prompt = f"{context}\n\nUser: {message}\nAI:"
+        response = model.generate_content(prompt)
+
+        reply = response.text if response and hasattr(response, "text") else "No response generated."
+
+    except Exception as e:
+        #reply = f"Error: {str(e)}" ----- This prints error
+        reply = "Error getting the message, please try again later" # ------this sends error message 
+
+    return jsonify({"reply": reply})
 
 # ---------------- Run App ----------------
 if __name__ == '__main__':

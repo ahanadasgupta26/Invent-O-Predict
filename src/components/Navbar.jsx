@@ -13,7 +13,7 @@ const Navbar = () => {
         <div className="flex items-center space-x-2 z-50"> 
           <img src="/assets/logo.png" alt="Logo" className="h-10 w-10 rounded-4xl" />
           <h1 className="text-xl font-bold text-gray-800">
-            Predicto<span className="text-blue-500">Stock</span>
+            Invent<span className="text-blue-500">O<span className="text-blue-500">Predict</span></span>
           </h1>
         </div>
         </Link>

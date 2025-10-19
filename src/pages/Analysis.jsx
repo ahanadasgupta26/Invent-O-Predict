@@ -29,22 +29,31 @@ const Analysis = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!selectedFile) return;
     setIsAnalyzing(true);
 
-    setTimeout(() => {
-      setIsAnalyzing(false);
+    const formData = new FormData();
+    formData.append("file", selectedFile);
 
-      // Simulate backend response
-      setResultData({
-        summary: "Stock prediction analysis completed successfully.",
-        fields: [
-          { Product_id: "P001", Product_name: "Item A", Category: "Category 1", Days_left_to_stockout: 12, Predicted_stockout_date: "2025-09-15" },
-          { Product_id: "P002", Product_name: "Item B", Category: "Category 2", Days_left_to_stockout: 5, Predicted_stockout_date: "2025-09-08" }
-        ]
+    try {
+      const response = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        body: formData,
       });
-    }, 2000);
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResultData(data);
+      } else {
+        alert("Error: " + data.error);
+      }
+    } catch (err) {
+      alert("Failed to analyze file: " + err.message);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
