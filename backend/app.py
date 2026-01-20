@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import os
 import tempfile
-import google.generativeai as genai  
+import google.generativeai as genai
 from model.predict import predict_stockout
 
 # ---------------- API KEY ----------------
@@ -116,7 +116,7 @@ def chat():
 
     try:
         # Initialize model
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-3-flash-preview")
 
         # Create prompt
         prompt = f"{context}\n\nUser: {message}\nAI:"
