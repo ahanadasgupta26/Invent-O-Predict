@@ -1,34 +1,102 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+
+  const [formData, setFormData] = useState({
+    warehouse_code: '',
+    password: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch('http://localhost:5000/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Store user info (basic session)
+        login(data.user);
+        alert('Login successful');
+        navigate('/'); // or dashboard route
+      } else {
+        alert(data.message || 'Login failed');
+      }
+    } catch (error) {
+      alert('Server error');
+    }
+  };
+
   return (
     <div className="pt-24 min-h-screen bg-gray-100 flex flex-col items-center py-10 px-4">
       <div className="w-full max-w-5xl bg-white shadow-lg rounded-lg flex flex-col md:flex-row overflow-hidden">
+
         {/* Form Section */}
-        <div className="flex-1 p-8 md:p-12 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 p-8 md:p-12 space-y-5">
           <h2 className="text-2xl font-bold">LOGIN</h2>
-          <input type="text" placeholder="Warehouse Name" className="w-full p-3 border rounded bg-blue-50 outline-none" />
-          <input type="text" placeholder="Warehouse Code" className="w-full p-3 border rounded bg-blue-50 outline-none" />
-          <input type="password" placeholder="Password" className="w-full p-3 border rounded bg-blue-50 outline-none" />
-          
+
+          <input
+            type="text"
+            name="warehouse_code"
+            placeholder="Warehouse Code"
+            value={formData.warehouse_code}
+            onChange={handleChange}
+            className="w-full p-3 border rounded bg-blue-50 outline-none"
+            required
+          />
+
+
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full p-3 border rounded bg-blue-50 outline-none"
+            required
+          />
+
           <div className="flex justify-end">
-            <a href="#" className="text-sm text-blue-600 hover:underline">Forgot Password?</a>
+            <a href="#" className="text-sm text-blue-600 hover:underline">
+              Forgot Password?
+            </a>
           </div>
 
-          <button type='submit' className="w-full bg-gray-800 text-white py-3 rounded hover:bg-gray-900 transition">
+          <button
+            type="submit"
+            className="w-full bg-gray-800 text-white py-3 rounded hover:bg-gray-900 transition"
+          >
             Login Now
           </button>
 
           <p className="text-center text-sm">
-            Don’t have an account? <Link to="/register" className="text-blue-600 font-medium">Sign up</Link>
+            Don’t have an account?{' '}
+            <Link to="/register" className="text-blue-600 font-medium">
+              Sign up
+            </Link>
           </p>
-        </div>
+        </form>
 
         {/* Illustration */}
         <div className="hidden md:flex flex-1 items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200 p-4">
-          {/* <img src="https://via.placeholder.com/400x400?text=Login+Illustration" alt="Login Illustration" className="max-w-full rounded" /> */}
-          <img src="/assets/home.png" alt="home"/>
+          <img src="/assets/home.png" alt="home" />
         </div>
       </div>
     </div>
