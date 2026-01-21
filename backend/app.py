@@ -8,7 +8,7 @@ import google.generativeai as genai
 from model.predict import predict_stockout
 
 # ---------------- API KEY ----------------
-API_KEY = "AIzaSyDoW3K1b1_ZWUWlEeo46cZpgtRSi46NSIg"
+API_KEY = "APIKEY"
 genai.configure(api_key=API_KEY)
 
 # ---------------- App Config ----------------
