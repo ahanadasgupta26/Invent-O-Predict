@@ -1,13 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import tempfile
 import google.generativeai as genai
 from model.predict import predict_stockout
 
 # ---------------- API KEY ----------------
-API_KEY = "API KEY" 
+API_KEY = "AIzaSyDoW3K1b1_ZWUWlEeo46cZpgtRSi46NSIg"
 genai.configure(api_key=API_KEY)
 
 # ---------------- App Config ----------------
@@ -16,14 +17,29 @@ CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
 # ---------------- Models ----------------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    company_name = db.Column(db.String(150), nullable=False)
+    company_code = db.Column(db.String(50), unique=True, nullable=False)
+
+    warehouse_name = db.Column(db.String(150), nullable=False)
+    warehouse_location = db.Column(db.String(200), nullable=False)
+    warehouse_code = db.Column(db.String(50), unique=True, nullable=False)
+
+    password = db.Column(db.String(200), nullable=False)
+
+
 class Contact(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     message = db.Column(db.Text, nullable=False)
+
 
 class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,54 +48,136 @@ class Feedback(db.Model):
     phone = db.Column(db.String(15), nullable=False)
     experience = db.Column(db.Text, nullable=False)
 
+
 # ---------------- Create Tables ----------------
 with app.app_context():
     db.create_all()
 
-# ---------------- Routes (Contact) ----------------
+# ---------------- Auth Routes ----------------
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+
+    required_fields = [
+        'company_name',
+        'company_code',
+        'warehouse_name',
+        'warehouse_location',
+        'warehouse_code',
+        'password'
+    ]
+
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"message": f"{field} is required"}), 400
+
+    # Check if company code already exists
+    if User.query.filter_by(company_code=data['company_code']).first():
+        return jsonify({"message": "Company code already exists"}), 409
+
+    hashed_password = generate_password_hash(data['password'])
+
+    new_user = User(
+        company_name=data['company_name'],
+        company_code=data['company_code'],
+        warehouse_name=data['warehouse_name'],
+        warehouse_location=data['warehouse_location'],
+        warehouse_code=data['warehouse_code'],
+        password=hashed_password
+    )
+
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"message": "Registration successful"}), 201
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+
+    user = User.query.filter_by(warehouse_code=data.get('warehouse_code')).first()
+
+    if not user or not check_password_hash(user.password, data.get('password')):
+        return jsonify({"message": "Invalid company code or password"}), 401
+
+    return jsonify({
+        "message": "Login successful",
+        "user": {
+            "id": user.id,
+            "company_name": user.company_name,
+            "company_code": user.company_code,
+            "warehouse_name": user.warehouse_name,
+            "warehouse_location": user.warehouse_location
+        }
+    }), 200
+
+
+# ---------------- Contact Routes ----------------
 @app.route('/Contact', methods=['POST'])
 def add_contact():
     data = request.get_json()
+
     new_contact = Contact(
         name=data['name'],
         email=data['email'],
         message=data['message']
     )
+
     db.session.add(new_contact)
     db.session.commit()
+
     return jsonify({"message": "Contact saved!"}), 201
+
 
 @app.route('/Contact', methods=['GET'])
 def get_contacts():
     contacts = Contact.query.all()
-    result = [
-        {"id": c.id, "name": c.name, "email": c.email, "message": c.message}
-        for c in contacts
-    ]
-    return jsonify(result)
 
-# ---------------- Routes (Feedback) ----------------
+    return jsonify([
+        {
+            "id": c.id,
+            "name": c.name,
+            "email": c.email,
+            "message": c.message
+        }
+        for c in contacts
+    ])
+
+
+# ---------------- Feedback Routes ----------------
 @app.route('/Feedback', methods=['POST'])
 def add_feedback():
     data = request.get_json()
+
     new_feedback = Feedback(
         name=data['name'],
         email=data['email'],
         phone=data['phone'],
         experience=data['experience']
     )
+
     db.session.add(new_feedback)
     db.session.commit()
-    return jsonify({"message": "Feedback given!"}), 201
+
+    return jsonify({"message": "Feedback submitted!"}), 201
+
 
 @app.route('/Feedback', methods=['GET'])
 def get_feedback():
     feedbacks = Feedback.query.all()
-    result = [
-        {"id": f.id, "name": f.name, "email": f.email, "phone": f.phone, "experience": f.experience}
+
+    return jsonify([
+        {
+            "id": f.id,
+            "name": f.name,
+            "email": f.email,
+            "phone": f.phone,
+            "experience": f.experience
+        }
         for f in feedbacks
-    ]
-    return jsonify(result)
+    ])
+
 
 # ---------------- Prediction Route ----------------
 @app.route('/predict', methods=['POST'])
@@ -88,10 +186,7 @@ def predict():
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No file selected"}), 400
 
-    # Save temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
         file.save(tmp.name)
         tmp_path = tmp.name
@@ -100,12 +195,14 @@ def predict():
         pred_df = predict_stockout(tmp_path)
         os.remove(tmp_path)
 
-        # Convert dataframe to JSON
-        result = pred_df.to_dict(orient="records")
-        return jsonify({"summary": "Stock prediction analysis completed.", "fields": result})
+        return jsonify({
+            "summary": "Stock prediction analysis completed.",
+            "fields": pred_df.to_dict(orient="records")
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # ---------------- Chatbot Route ----------------
 @app.route('/chat', methods=['POST'])
@@ -115,20 +212,15 @@ def chat():
     context = data.get('context', '')
 
     try:
-        # Initialize model
         model = genai.GenerativeModel("gemini-3-flash-preview")
-
-        # Create prompt
         prompt = f"{context}\n\nUser: {message}\nAI:"
         response = model.generate_content(prompt)
-
-        reply = response.text if response and hasattr(response, "text") else "No response generated."
-
-    except Exception as e:
-        #reply = f"Error: {str(e)}" ----- This prints error
-        reply = "Error getting the message, please try again later" # ------this sends error message 
+        reply = response.text
+    except:
+        reply = "Error getting the message, please try again later"
 
     return jsonify({"reply": reply})
+
 
 # ---------------- Run App ----------------
 if __name__ == '__main__':
