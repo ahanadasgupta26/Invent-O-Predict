@@ -9,13 +9,10 @@ import google.generativeai as genai
 from model.predict import predict_stockout
 load_dotenv()
 # ---------------- API KEY ----------------
-
-API_KEY = "API KEY" 
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
-
 
 genai.configure(api_key=API_KEY)
 
@@ -229,6 +226,8 @@ def chat():
         reply = response.text
     except:
         reply = "Error getting the message, please try again later"
+        #for e in Exception:
+           # reply=e for printing error messages
 
     return jsonify({"reply": reply})
 

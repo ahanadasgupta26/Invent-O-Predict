@@ -1,32 +1,39 @@
-import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
-import Result from './Result';
+import React, { useState, useRef } from "react";
+import * as XLSX from "xlsx";
+import { useNavigate } from "react-router-dom";
 
 const Analysis = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [tableData, setTableData] = useState([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [resultData, setResultData] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const fileInputRef = useRef(null);
+  const navigate = useNavigate();
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-
     reader.onload = (e) => {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const worksheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[worksheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      setTableData(XLSX.utils.sheet_to_json(sheet, { header: 1 }));
       setSelectedFile(file);
-      setTableData(jsonData);
     };
-
     reader.readAsArrayBuffer(file);
+  };
+
+  // ✅ FIX: reset input value
+  const removeFile = () => {
+    setSelectedFile(null);
+    setTableData([]);
+    setShowPreview(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleAnalyze = async () => {
@@ -45,123 +52,120 @@ const Analysis = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setResultData(data);
+        navigate("/analysisresult", { state: data });
       } else {
         alert("Error: " + data.error);
       }
     } catch (err) {
-      alert("Failed to analyze file: " + err.message);
+      alert("Failed to analyze file");
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-gray-50 p-6 flex flex-col items-center">
-      <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center">
-        Upload XLSX File
-      </h1>
+    <div className="pt-24 min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 p-6 flex justify-center">
 
-      {/* Upload Box */}
-      <div className="w-full max-w-4xl border border-dashed border-gray-400 rounded-lg bg-blue-100 p-8 text-center">
-        <label htmlFor="fileUpload" className="cursor-pointer flex flex-col items-center gap-4">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <p className="text-lg font-semibold">Drag or Drop file(s) here</p>
-          <p className="text-sm text-gray-500">or</p>
+      <div className="w-full max-w-4xl bg-white rounded-xl shadow-xl p-8">
+
+        <h1 className="text-3xl font-bold text-center mb-8">
+          Stockout Analysis
+        </h1>
+
+        {/* Upload Area */}
+        <div className="border-2 border-dashed border-blue-400 rounded-lg p-8 text-center bg-blue-50">
           <input
+            ref={fileInputRef}
             type="file"
-            id="fileUpload"
             accept=".xlsx"
             onChange={handleFileChange}
-            hidden
+            className="hidden"
+            id="fileUpload"
           />
-          <button className="bg-black text-white px-4 py-2 rounded">Browse Files</button>
-        </label>
+          <label
+            htmlFor="fileUpload"
+            className="cursor-pointer text-blue-700 font-semibold"
+          >
+            Click to upload XLSX file
+          </label>
+        </div>
+
+        {/* File Info */}
+        {selectedFile && (
+          <div className="mt-6 flex items-center justify-between bg-gray-100 px-4 py-3 rounded-lg">
+            <span
+              onClick={() => setShowPreview(true)}
+              className="text-blue-600 font-medium cursor-pointer hover:underline"
+            >
+              {selectedFile.name}
+            </span>
+
+            <button
+              onClick={removeFile}
+              className="text-red-500 font-bold text-xl"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Analyze */}
+        {selectedFile && (
+          <div className="mt-8 text-center">
+            <button
+              onClick={handleAnalyze}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-lg text-lg transition"
+            >
+              Analyze
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* File Name with Modal Preview */}
-      {selectedFile && (
-        <div className="mt-6 w-full max-w-4xl text-center">
-          <button
-            className="text-blue-600 font-semibold underline hover:text-blue-800"
-            onClick={() => setIsModalOpen(true)}
-          >
-            {selectedFile.name}
-          </button>
+      {/* Full-screen Spinner */}
+      {isAnalyzing && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center z-150">
+          <div className="w-20 h-20 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-white mt-6 text-lg">
+            Analyzing your data...
+          </p>
         </div>
       )}
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-5xl p-6 relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-3 right-3 text-gray-600 hover:text-black text-xl"
-            >
-              ✖
-            </button>
-            <h2 className="text-xl font-bold mb-4 text-center">📄 File Preview</h2>
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white w-11/12 max-w-5xl rounded-xl shadow-xl p-6">
 
-            {tableData.length > 0 ? (
-              <div className="overflow-x-auto max-h-[70vh]">
-                <table className="min-w-full border border-gray-300 rounded-lg shadow-md">
-                  <thead className="bg-gray-200">
-                    <tr>
-                      {tableData[0].map((cell, index) => (
-                        <th key={index} className="px-4 py-2 border text-sm font-semibold text-left">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">File Preview</h2>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="text-red-500 text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto border rounded">
+              <table className="min-w-full text-sm">
+                <tbody>
+                  {tableData.map((row, i) => (
+                    <tr key={i} className="border-b">
+                      {row.map((cell, j) => (
+                        <td key={j} className="px-3 py-2 border-r">
                           {cell}
-                        </th>
+                        </td>
                       ))}
                     </tr>
-                  </thead>
-                  <tbody>
-                    {tableData.slice(1, 11).map((row, rowIndex) => (
-                      <tr key={rowIndex} className="bg-white even:bg-gray-100">
-                        {row.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="px-4 py-2 border text-sm">
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="text-sm text-gray-500 mt-2 text-center">Showing first 10 rows...</p>
-              </div>
-            ) : (
-              <p className="text-center text-gray-500">No data available in this file.</p>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
           </div>
         </div>
       )}
-
-      {/* Analyze Button */}
-      {selectedFile && (
-        <div className="mt-6">
-          <button
-            onClick={handleAnalyze}
-            disabled={isAnalyzing}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isAnalyzing ? (
-              <div className="flex items-center gap-2">
-                <span className="loader h-5 w-5 border-2 border-white border-t-blue-300 rounded-full animate-spin inline-block" />
-                Analyzing...
-              </div>
-            ) : (
-              'Analyze'
-            )}
-          </button>
-        </div>
-      )}
-
-      {/* Result Section */}
-      <div className="mt-10 w-full max-w-4xl">
-        <Result data={resultData} />
-      </div>
     </div>
   );
 };
