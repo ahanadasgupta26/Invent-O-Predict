@@ -2,13 +2,18 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
 import os
 import tempfile
 import google.generativeai as genai
 from model.predict import predict_stockout
-
+load_dotenv()
 # ---------------- API KEY ----------------
-API_KEY = "API KEY" 
+API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in environment variables")
+
 genai.configure(api_key=API_KEY)
 
 # ---------------- App Config ----------------
