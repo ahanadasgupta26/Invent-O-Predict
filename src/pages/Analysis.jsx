@@ -73,22 +73,66 @@ const Analysis = () => {
         </h1>
 
         {/* Upload Area */}
-        <div className="border-2 border-dashed border-blue-400 rounded-lg p-8 text-center bg-blue-50">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx"
-            onChange={handleFileChange}
-            className="hidden"
-            id="fileUpload"
-          />
-          <label
-            htmlFor="fileUpload"
-            className="cursor-pointer text-blue-700 font-semibold"
-          >
-            Click to upload XLSX file
-          </label>
-        </div>
+<div
+  className="relative bg-blue-50 border-2 border-dashed border-blue-400 rounded-xl p-10 text-center transition hover:bg-blue-100"
+  onDragOver={(e) => e.preventDefault()}
+  onDrop={(e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileChange({ target: { files: [file] } });
+    }
+  }}
+>
+  {/* Hidden Input */}
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept=".xlsx"
+    onChange={handleFileChange}
+    className="hidden"
+    id="fileUpload"
+  />
+
+  {/* Upload Icon */}
+  <div className="flex justify-center mb-4">
+    <div className="bg-blue-100 p-4 rounded-full">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-8 w-8 text-blue-600"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M7 16l5-5 5 5M12 11v10M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 16.25"
+        />
+      </svg>
+    </div>
+  </div>
+
+  {/* Text */}
+  <p className="text-gray-700 font-medium mb-1">
+    Drag & Drop Files Here
+  </p>
+  <p className="text-gray-500 text-sm mb-4">or</p>
+
+  {/* Browse Button */}
+  <label
+    htmlFor="fileUpload"
+    className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg cursor-pointer transition font-medium"
+  >
+    Browse File
+  </label>
+
+  <p className="text-xs text-gray-500 mt-3">
+    Supported format: .xlsx
+  </p>
+</div>
+
 
         {/* File Info */}
         {selectedFile && (

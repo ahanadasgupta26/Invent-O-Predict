@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
+import { ArrowUp, ArrowDown } from "lucide-react";
 
 const AnalysisResult = () => {
   const { state } = useLocation();
@@ -9,6 +10,7 @@ const AnalysisResult = () => {
 
   const [downloading, setDownloading] = useState(false);
   const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState(null); // 'asc' | 'desc' | null
 
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
@@ -18,6 +20,7 @@ const AnalysisResult = () => {
     );
   }
 
+  // 🔍 Search filter
   const filteredData = useMemo(() => {
     const q = search.toLowerCase();
 
@@ -25,14 +28,37 @@ const AnalysisResult = () => {
       (row) =>
         row.Product_id?.toString().toLowerCase().includes(q) ||
         row.Product_name?.toLowerCase().includes(q) ||
-        row.Category?.toLowerCase().includes(q),
+        row.Category?.toLowerCase().includes(q)
     );
   }, [search, data]);
+
+  // 🔽🔼 Sort by Days Left
+  const sortedData = useMemo(() => {
+    if (!sortOrder) return filteredData;
+
+    return [...filteredData].sort((a, b) => {
+      if (sortOrder === "asc") {
+        return a.Days_left_to_stockout - b.Days_left_to_stockout;
+      }
+      if (sortOrder === "desc") {
+        return b.Days_left_to_stockout - a.Days_left_to_stockout;
+      }
+      return 0;
+    });
+  }, [filteredData, sortOrder]);
+
+  const toggleSort = () => {
+    setSortOrder((prev) => {
+      if (prev === "asc") return "desc";
+      if (prev === "desc") return null;
+      return "asc";
+    });
+  };
 
   const handleDownload = () => {
     setDownloading(true);
     setTimeout(() => {
-      const worksheet = XLSX.utils.json_to_sheet(filteredData);
+      const worksheet = XLSX.utils.json_to_sheet(sortedData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Analysis Result");
       XLSX.writeFile(workbook, "analysis-result.xlsx");
@@ -49,7 +75,7 @@ const AnalysisResult = () => {
           <div>
             <button
               onClick={() => navigate("/analysis")}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition disabled:opacity-70"
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition"
             >
               ← Analyse Again
             </button>
@@ -79,7 +105,7 @@ const AnalysisResult = () => {
         <div className="px-6 pt-4">
           <input
             type="text"
-            placeholder="Search by Product ID/Product Name/Category"
+            placeholder="Search by Product ID / Product Name / Category"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full sm:w-180 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -96,18 +122,34 @@ const AnalysisResult = () => {
                     <th className="px-4 py-3 text-center font-semibold">
                       Product ID
                     </th>
-                    <th className="px-4 py-3 font-semibold">Product Name</th>
-                    <th className="px-4 py-3 font-semibold">Category</th>
-                    <th className="px-4 py-3 text-center font-semibold">
-                      Days Left
+                    <th className="px-4 py-3 font-semibold">
+                      Product Name
                     </th>
-                    <th className="px-4 py-3 font-semibold">Stockout Date</th>
+                    <th className="px-4 py-3 font-semibold">
+                      Category
+                    </th>
+
+                    {/* 🔽🔼 SORTABLE HEADER */}
+                    <th
+                      onClick={toggleSort}
+                      className="px-4 py-3 text-center font-semibold cursor-pointer select-none"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Days Left
+                        {sortOrder === "asc" && <ArrowUp size={16} />}
+                        {sortOrder === "desc" && <ArrowDown size={16} />}
+                      </div>
+                    </th>
+
+                    <th className="px-4 py-3 font-semibold">
+                      Stockout Date
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {filteredData.length > 0 ? (
-                    filteredData.map((row, index) => (
+                  {sortedData.length > 0 ? (
+                    sortedData.map((row, index) => (
                       <tr
                         key={index}
                         className="odd:bg-white even:bg-blue-50 hover:bg-blue-100 transition"
@@ -115,8 +157,12 @@ const AnalysisResult = () => {
                         <td className="px-4 py-2 text-center">
                           {row.Product_id}
                         </td>
-                        <td className="px-4 py-2">{row.Product_name}</td>
-                        <td className="px-4 py-2">{row.Category}</td>
+                        <td className="px-4 py-2">
+                          {row.Product_name}
+                        </td>
+                        <td className="px-4 py-2">
+                          {row.Category}
+                        </td>
                         <td className="px-4 py-2 text-center font-bold text-red-600">
                           {row.Days_left_to_stockout}
                         </td>
