@@ -223,6 +223,8 @@ def chat():
         reply = response.text
     except:
         reply = "Error getting the message, please try again later"
+        #for e in Exception:
+           # reply=e for printing error messages
 
     return jsonify({"reply": reply})
 

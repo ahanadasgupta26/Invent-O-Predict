@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Chart from '../components/Chart';
+import FeedbackSide from "../components/FeedbackSide";
 
 const Feedback = () => {
   const [formData, setFormData] = useState({
@@ -40,7 +40,7 @@ const Feedback = () => {
         {/* Form Section */}
         <div className="md:w-1/2 p-8 md:p-12">
           <h2 className="text-4xl font-bold mb-4">
-            Get in <span className="text-blue-400">Touch</span>
+            Feedback <span className="text-blue-400">Us</span>
           </h2>
           <p className="text-gray-600 mb-8">
             Your feedback helps us grow and serve you better.
@@ -103,7 +103,7 @@ const Feedback = () => {
 
         {/* Right Section: Chart or Illustration */}
         <div className="md:w-1/2 bg-blue-50 flex justify-center items-center p-4">
-          <Chart />
+          <FeedbackSide />
         </div>
       </div>
     </div>
