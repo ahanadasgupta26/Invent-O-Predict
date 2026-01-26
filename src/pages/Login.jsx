@@ -6,6 +6,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const [formData, setFormData] = useState({
     warehouse_code: '',
@@ -32,10 +33,14 @@ const Login = () => {
       const data = await res.json();
 
       if (res.ok) {
-        // Store user info (basic session)
         login(data.user);
-        alert('Login successful');
-        navigate('/'); // or dashboard route
+
+        setShowSuccessPopup(true);
+        
+        setTimeout(() => {
+          setShowSuccessPopup(false);
+          navigate('/');
+        }, 1500);
       } else {
         alert(data.message || 'Login failed');
       }
@@ -62,7 +67,6 @@ const Login = () => {
             required
           />
 
-
           <input
             type="password"
             name="password"
@@ -72,12 +76,6 @@ const Login = () => {
             className="w-full p-3 border rounded bg-blue-50 outline-none"
             required
           />
-
-          <div className="flex justify-end">
-            <a href="#" className="text-sm text-blue-600 hover:underline">
-              Forgot Password?
-            </a>
-          </div>
 
           <button
             type="submit"
@@ -93,6 +91,16 @@ const Login = () => {
             </Link>
           </p>
         </form>
+
+        {/* ✅ Success Popup (Top Center) */}
+        {showSuccessPopup && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
+            <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+              <span className="text-xl">✅</span>
+              <p className="font-semibold">Login Successful</p>
+            </div>
+          </div>
+        )}
 
         {/* Illustration */}
         <div className="hidden md:flex flex-1 items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200 p-4">

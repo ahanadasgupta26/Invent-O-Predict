@@ -12,6 +12,12 @@ const AnalysisResult = () => {
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState(null); // 'asc' | 'desc' | null
 
+  // 🔔 Reminder states
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [email, setEmail] = useState("");
+  const [savingReminder, setSavingReminder] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
       <div className="pt-24 text-center text-gray-500 text-lg">
@@ -66,6 +72,58 @@ const AnalysisResult = () => {
     }, 800);
   };
 
+  // 🔔 Create reminders (GLOBAL)
+  const handleCreateReminder = async () => {
+    if (!email) {
+      alert("Please enter an email");
+      return;
+    }
+
+    setSavingReminder(true);
+
+    const payload = {
+      email,
+      results: sortedData.map((row) => ({
+        product_name: row.Product_name,
+        stockout_date: new Date(row.Predicted_stockout_date)
+  .toISOString()
+  .split("T")[0],
+        days_left: row.Days_left_to_stockout,
+      })),
+    };
+
+    try {
+      const res = await fetch(
+        "http://127.0.0.1:5000/create-stockout-reminders",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setShowReminderModal(false);
+setEmail("");
+setShowSuccessPopup(true);
+
+// auto hide popup after 2.5 seconds
+setTimeout(() => {
+  setShowSuccessPopup(false);
+}, 2500);
+
+      } else {
+        alert(data.message || "Failed to create reminders");
+      }
+    } catch (err) {
+      alert("Server error while creating reminders");
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
   return (
     <div className="pt-24 min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 p-4">
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-xl flex flex-col">
@@ -87,7 +145,14 @@ const AnalysisResult = () => {
           </h2>
 
           {/* Right */}
-          <div className="flex sm:justify-end">
+          <div className="flex gap-3 sm:justify-end">
+            <button
+              onClick={() => setShowReminderModal(true)}
+              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition"
+            >
+              🔔 Remind Me
+            </button>
+
             <button
               onClick={handleDownload}
               disabled={downloading}
@@ -129,7 +194,6 @@ const AnalysisResult = () => {
                       Category
                     </th>
 
-                    {/* 🔽🔼 SORTABLE HEADER */}
                     <th
                       onClick={toggleSort}
                       className="px-4 py-3 text-center font-semibold cursor-pointer select-none"
@@ -148,45 +212,89 @@ const AnalysisResult = () => {
                 </thead>
 
                 <tbody>
-                  {sortedData.length > 0 ? (
-                    sortedData.map((row, index) => (
-                      <tr
-                        key={index}
-                        className="odd:bg-white even:bg-blue-50 hover:bg-blue-100 transition"
-                      >
-                        <td className="px-4 py-2 text-center">
-                          {row.Product_id}
-                        </td>
-                        <td className="px-4 py-2">
-                          {row.Product_name}
-                        </td>
-                        <td className="px-4 py-2">
-                          {row.Category}
-                        </td>
-                        <td className="px-4 py-2 text-center font-bold text-red-600">
-                          {row.Days_left_to_stockout}
-                        </td>
-                        <td className="px-4 py-2">
-                          {row.Predicted_stockout_date}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="text-center py-6 text-gray-500"
-                      >
-                        No matching Product ID found
+                  {sortedData.map((row, index) => (
+                    <tr
+                      key={index}
+                      className="odd:bg-white even:bg-blue-50 hover:bg-blue-100 transition"
+                    >
+                      <td className="px-4 py-2 text-center">
+                        {row.Product_id}
+                      </td>
+                      <td className="px-4 py-2">
+                        {row.Product_name}
+                      </td>
+                      <td className="px-4 py-2">
+                        {row.Category}
+                      </td>
+                      <td className="px-4 py-2 text-center font-bold text-red-600">
+                        {row.Days_left_to_stockout}
+                      </td>
+                      <td className="px-4 py-2">
+                        {row.Predicted_stockout_date}
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
+      {/* ✅ Success Popup */}
+{showSuccessPopup && (
+  <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
+    <div className="bg-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+      <span className="text-xl">✅</span>
+      <div>
+        <p className="font-semibold">Reminder Activated</p>
+        <p className="text-sm opacity-90">
+          You’ll receive emails on stockout dates
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
+
+      {/* 🔔 Reminder Modal */}
+      {showReminderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white w-96 rounded-xl shadow-xl p-6">
+            <h3 className="text-lg font-bold mb-2">
+              Get Stockout Reminders
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-4">
+              You will receive emails on each predicted stockout date.
+            </p>
+
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 mb-4"
+            />
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowReminderModal(false)}
+                className="px-4 py-2 text-gray-600"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleCreateReminder}
+                disabled={savingReminder}
+                className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg"
+              >
+                {savingReminder ? "Saving..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

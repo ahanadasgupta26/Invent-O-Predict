@@ -7,6 +7,11 @@ import os
 import tempfile
 import google.generativeai as genai
 from model.predict import predict_stockout
+import smtplib
+from email.mime.text import MIMEText
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import date
+
 load_dotenv()
 # ---------------- API KEY ----------------
 API_KEY = os.getenv("GEMINI_API_KEY")
@@ -52,6 +57,14 @@ class Feedback(db.Model):
     email = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(15), nullable=False)
     experience = db.Column(db.Text, nullable=False)
+
+
+class StockoutReminder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False)
+    product_name = db.Column(db.String(150), nullable=False)
+    stockout_date = db.Column(db.Date, nullable=False)
+    sent = db.Column(db.Boolean, default=False)
 
 
 # ---------------- Create Tables ----------------
@@ -116,6 +129,37 @@ def login():
             "warehouse_location": user.warehouse_location
         }
     }), 200
+
+from datetime import datetime
+
+@app.route("/create-stockout-reminders", methods=["POST"])
+def create_stockout_reminders():
+    data = request.get_json()
+    email = data.get("email")
+    results = data.get("results", [])
+
+    if not email or not results:
+        return jsonify({"message": "Invalid data"}), 400
+
+    for item in results:
+        try:
+            stockout_date = datetime.strptime(
+                item["stockout_date"], "%Y-%m-%d"
+            ).date()
+
+            reminder = StockoutReminder(
+                email=email,
+                product_name=item["product_name"],
+                stockout_date=stockout_date
+            )
+            db.session.add(reminder)
+        except Exception:
+            continue
+
+    db.session.commit()
+    check_and_send_reminders()
+    return jsonify({"message": "Reminders created"}), 201
+
 
 
 # ---------------- Contact Routes ----------------
@@ -207,6 +251,16 @@ def predict():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/test-email")
+def test_email():
+    send_email(
+        "inventopredict@gmail.com",
+        "Test Email",
+        "If you received this, SMTP is working."
+    )
+    return "Email sent"
+
 
 
 # ---------------- Chatbot Route ----------------
@@ -224,9 +278,112 @@ def chat():
     except:
         reply = "Error getting the message, please try again later"
         #for e in Exception:
-           # reply=e for printing error messages
+        reply=Exception
 
     return jsonify({"reply": reply})
+
+# @app.route('/chat', methods=['POST'])
+# def chat():
+#     data = request.get_json()
+#     message = data.get('message', '')
+#     context = data.get('context', '')
+
+#     try:
+#         model = genai.GenerativeModel("gemini-3-flash-preview")
+#         prompt = f"{context}\n\nUser: {message}\nAI:"
+#         response = model.generate_content(prompt)
+
+#         reply = response.text if response and hasattr(response, "text") else (
+#             "I couldn't generate a response right now."
+#         )
+
+#     except Exception as e:
+#         # 🔒 SAFE fallback when quota / network / API error happens
+#         print("Gemini error:", str(e))  # logs error in terminal
+#         reply = (
+#             "⚠️ Chat service is temporarily unavailable "
+#             "due to usage limits. Please try again later."
+#         )
+
+#     return jsonify({"reply": reply})
+
+
+def send_email(to_email, subject, body):
+    print("📨 Attempting to send email...")
+    print("To:", to_email)
+    print("From:", os.getenv("EMAIL_USER"))
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = os.getenv("EMAIL_USER")
+    msg["To"] = to_email
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(
+                os.getenv("EMAIL_USER"),
+                os.getenv("EMAIL_PASS")
+            )
+            server.send_message(msg)
+
+        print("✅ Email sent successfully")
+
+    except Exception as e:
+        print("❌ Email failed:", str(e))
+
+from collections import defaultdict
+
+def check_and_send_reminders():
+    today = date.today()
+    print("📅 Checking reminders for:", today)
+
+    reminders = StockoutReminder.query.filter_by(
+        stockout_date=today,
+        sent=False
+    ).all()
+    print("🔔 Found reminders:", len(reminders))
+    
+    if not reminders:
+        return
+
+    # 🔹 Group reminders by email
+    grouped = defaultdict(list)
+    for r in reminders:
+        grouped[r.email].append(r)
+
+    # 🔹 Send ONE email per user
+    for email, user_reminders in grouped.items():
+        product_list = "\n".join(
+            f"• {r.product_name}" for r in user_reminders
+        )
+
+        subject = f"Stockout Alert – {len(user_reminders)} Product(s)"
+
+        body = f"""
+Hello,
+
+The following product(s) are expected to run out of stock today:
+
+{product_list}
+
+Please take necessary action to avoid stock issues.
+
+– InventOPredict Team
+"""
+
+        send_email(email, subject, body)
+
+        # Mark all reminders as sent
+        for r in user_reminders:
+            r.sent = True
+
+    db.session.commit()
+
+
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(check_and_send_reminders, "interval", hours=24)
+scheduler.start()
 
 
 # ---------------- Run App ----------------
