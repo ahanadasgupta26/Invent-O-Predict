@@ -37,7 +37,7 @@ const FeedbackSide = () => {
         {points.map((p, i) => (
           <div
             key={i}
-            className="bg-blue-50 p-6 rounded-xl shadow-sm text-center
+            className="bg-blue-100 p-6 rounded-xl shadow-sm text-center
             transition transform hover:-translate-y-1"
           >
             <div className="text-4xl mb-4 flex justify-center">
@@ -50,7 +50,7 @@ const FeedbackSide = () => {
       </div>
 
       {/* Support Note */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
+      <div className="bg-blue-100 border border-blue-100 rounded-xl p-6">
         <h4 className="font-semibold text-blue-600 mb-2">
           Need Immediate Help?
         </h4>

@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 const Register = () => {
   const navigate = useNavigate();
 
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
   const [formData, setFormData] = useState({
     company_name: '',
     company_code: '',
@@ -33,8 +35,12 @@ const Register = () => {
       const data = await res.json();
 
       if (res.ok) {
-        alert('Registration successful');
-        navigate('/login');
+        setShowSuccessPopup(true);
+
+        setTimeout(() => {
+          setShowSuccessPopup(false);
+          navigate('/login');
+        }, 1500);
       } else {
         alert(data.message || 'Registration failed');
       }
@@ -122,6 +128,16 @@ const Register = () => {
             </Link>
           </p>
         </form>
+
+        {/* ✅ Success Popup */}
+        {showSuccessPopup && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
+            <div className="bg-green-600 text-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+              <span className="text-xl">✅</span>
+              <p className="font-semibold">Registration Successful</p>
+            </div>
+          </div>
+        )}
 
         {/* Illustration */}
         <div className="hidden md:flex flex-1 items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200 p-4">
