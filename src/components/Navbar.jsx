@@ -22,25 +22,26 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
 
         {/* Logo */}
-        <Link to="/">
-          <div className="flex items-center space-x-2 z-50">
-            <img src="/assets/logo.png" alt="Logo" className="h-10 w-10 rounded-4xl" />
+        <Link to="/" className="z-50">
+          <div className="flex items-center gap-2">
+            <img src="/assets/logo.png" alt="Logo" className="h-10 w-10 rounded-xl" />
             <h1 className="text-xl font-bold text-gray-800">
-              Invent<span className="text-blue-500">O<span className="text-blue-500">Predict</span></span>
+              Invent<span className="text-blue-500">O</span>
+              <span className="text-blue-500">Predict</span>
             </h1>
           </div>
         </Link>
 
         {/* Desktop Links */}
         <div className="hidden lg:flex flex-1 justify-center gap-8 text-sm font-medium text-gray-700">
-          <Link to="/" className="hover:text-blue-500">Home</Link>
-          <Link to="/analysis" className="hover:text-blue-500">Analysis</Link>
-          <Link to="/about" className="hover:text-blue-500">About</Link>
-          <Link to="/contactus" className="hover:text-blue-500">Contact us</Link>
-          <Link to="/feedback" className="hover:text-blue-500">Feedback Us</Link>
+          <Link className="hover:text-blue-500" to="/">Home</Link>
+          <Link className="hover:text-blue-500" to="/analysis">Analysis</Link>
+          <Link className="hover:text-blue-500" to="/about">About</Link>
+          <Link className="hover:text-blue-500" to="/contactus">Contact Us</Link>
+          <Link className="hover:text-blue-500" to="/feedback">Feedback</Link>
         </div>
 
-        {/* Right Section */}
+        {/* Desktop Right */}
         <div className="hidden lg:block relative">
           {!user ? (
             <Link to="/login">
@@ -50,10 +51,9 @@ const Navbar = () => {
             </Link>
           ) : (
             <div className="relative">
-              {/* User Button */}
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 bg-white/70 backdrop-blur-md px-3 py-1.5 rounded-full shadow hover:shadow-md transition"
+                className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow hover:shadow-md transition"
               >
                 <FaUserCircle size={26} className="text-blue-600" />
                 <span className="text-sm font-medium text-gray-700">
@@ -61,17 +61,16 @@ const Navbar = () => {
                 </span>
               </button>
 
-              {/* Dropdown */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-3 w-56 rounded-xl bg-white shadow-xl border overflow-hidden animate-fade-in">
-                  <div className="px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-400 text-white">
+                <div className="absolute right-0 mt-3 w-56 rounded-xl bg-white shadow-xl border overflow-hidden">
+                  <div className="px-4 py-3 bg-blue-500 text-white">
                     <p className="text-sm font-semibold">{user.company_name}</p>
                     <p className="text-xs opacity-90">{user.company_code}</p>
                   </div>
 
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition"
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50"
                   >
                     <FiLogOut />
                     Logout
@@ -84,47 +83,67 @@ const Navbar = () => {
 
         {/* Mobile Menu Button */}
         <div className="lg:hidden z-50">
-          <button onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <HiX size={26} /> : <HiMenu size={26} />}
+          <button onClick={() => setMenuOpen(true)}>
+            <HiMenu size={26} />
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      <div
-        className={`lg:hidden fixed top-0 left-0 w-full h-full bg-white z-40 transform transition-transform duration-300 ${
-          menuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="pt-24 px-8 flex flex-col items-center gap-6 text-lg text-gray-700 font-medium">
-          <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link to="/analysis" onClick={() => setMenuOpen(false)}>Analysis</Link>
-          <Link to="/about" onClick={() => setMenuOpen(false)}>About</Link>
-          <Link to="/contactus" onClick={() => setMenuOpen(false)}>Contact us</Link>
-          <Link to="/feedback" onClick={() => setMenuOpen(false)}>Feedback Us</Link>
+      {/* Mobile Overlay */}
+      {menuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
 
-          {!user ? (
-            <Link to="/login" onClick={() => setMenuOpen(false)}>
-              <button className="mt-6 bg-blue-100 px-5 py-2 rounded-lg text-sm">
-                Login / Register
-              </button>
-            </Link>
-          ) : (
-            <>
-              <div className="mt-6 text-sm text-gray-600">
-                {user.company_name}
-              </div>
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setMenuOpen(false);
-                }}
-                className="text-red-600 text-sm"
-              >
-                Logout
-              </button>
-            </>
-          )}
+      {/* Mobile Sidebar (Half Screen) */}
+      <div
+        className={`lg:hidden fixed top-0 left-0 h-full w-[75%] max-w-sm bg-white z-50
+        transform transition-all duration-300 ease-out
+        ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b">
+          <h2 className="text-lg font-semibold text-gray-800">Menu</h2>
+          <button onClick={() => setMenuOpen(false)}>
+            <HiX size={24} />
+          </button>
+        </div>
+
+        {/* Mobile Links */}
+        <div className="px-6 py-6 flex flex-col gap-5 text-gray-700 font-medium">
+          <Link to="/" onClick={() => setMenuOpen(false)} className="hover:text-blue-500">Home</Link>
+          <Link to="/analysis" onClick={() => setMenuOpen(false)} className="hover:text-blue-500">Analysis</Link>
+          <Link to="/about" onClick={() => setMenuOpen(false)} className="hover:text-blue-500">About</Link>
+          <Link to="/contactus" onClick={() => setMenuOpen(false)} className="hover:text-blue-500">Contact Us</Link>
+          <Link to="/feedback" onClick={() => setMenuOpen(false)} className="hover:text-blue-500">Feedback</Link>
+
+          <div className="mt-6 border-t pt-5">
+            {!user ? (
+              <Link to="/login" onClick={() => setMenuOpen(false)}>
+                <button className="w-full bg-blue-500 text-white py-2.5 rounded-lg hover:bg-blue-600">
+                  Login / Register
+                </button>
+              </Link>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-3">
+                  {user.company_name}
+                </p>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 text-red-600 py-2.5 rounded-lg hover:bg-red-50"
+                >
+                  <FiLogOut />
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
