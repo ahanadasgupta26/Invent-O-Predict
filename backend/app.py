@@ -16,9 +16,6 @@ if not API_KEY:
 
 genai.configure(api_key=API_KEY)
 
-# API_KEY = ""
-# genai.configure(api_key=API_KEY)
-
 # ---------------- App Config ----------------
 app = Flask(__name__)
 CORS(app)

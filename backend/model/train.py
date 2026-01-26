@@ -2,9 +2,11 @@ import joblib
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from pipeline import build_pipeline
+import os
 
 # Load and process dataset
-final_df = build_pipeline("blinkit sales dataset.xlsx")
+dataset_path = os.path.join(os.path.dirname(__file__), "blinkit sales dataset.xlsx")
+final_df = build_pipeline(dataset_path)
 
 features = [
     'net_stock', 'total_quantity', 'active_days', 'avg_daily_sales',
