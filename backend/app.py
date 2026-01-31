@@ -64,7 +64,7 @@ class StockoutReminder(db.Model):
     email = db.Column(db.String(120), nullable=False)
     product_name = db.Column(db.String(150), nullable=False)
     stockout_date = db.Column(db.Date, nullable=False)
-    sent = db.Column(db.Boolean, default=False)
+    reminder_stage = db.Column(db.Integer, default=0)
 
 
 # ---------------- Create Tables ----------------
@@ -140,7 +140,7 @@ def create_stockout_reminders():
 
     if not email or not results:
         return jsonify({"message": "Invalid data"}), 400
-
+    saved_products = []
     for item in results:
         try:
             stockout_date = datetime.strptime(
@@ -153,11 +153,36 @@ def create_stockout_reminders():
                 stockout_date=stockout_date
             )
             db.session.add(reminder)
+            saved_products.append(
+                f"• {item['product_name']} (Stockout: {item['stockout_date']})"
+            )
         except Exception:
             continue
 
     db.session.commit()
     check_and_send_reminders()
+    # 🔔 IMMEDIATE CONFIRMATION EMAIL
+    product_list = "\n".join(saved_products)
+
+    send_email(
+        email,
+        "Stockout Reminders Activated ✅",
+        f"""
+Hello,
+
+Your stockout reminders have been successfully activated.
+
+You will receive reminder emails:
+• 2 days before stockout
+• 1 day before stockout
+• On the stockout day (9:00 AM)
+
+Tracked products:
+{product_list}
+
+– InventOPredict Team
+"""
+    )
     return jsonify({"message": "Reminders created"}), 201
 
 
@@ -261,8 +286,6 @@ def test_email():
     )
     return "Email sent"
 
-
-
 # ---------------- Chatbot Route ----------------
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -331,61 +354,137 @@ def send_email(to_email, subject, body):
     except Exception as e:
         print("❌ Email failed:", str(e))
 
+from datetime import date, timedelta
 from collections import defaultdict
+
+from collections import defaultdict
+from datetime import date
 
 def check_and_send_reminders():
     today = date.today()
-    print("📅 Checking reminders for:", today)
+    print("📅 Running reminder check for:", today)
 
-    reminders = StockoutReminder.query.filter_by(
-        stockout_date=today,
-        sent=False
-    ).all()
-    print("🔔 Found reminders:", len(reminders))
-    
-    if not reminders:
-        return
+    reminders = StockoutReminder.query.all()
+    # print("🔔 Total reminders:", len(reminders))
 
-    # 🔹 Group reminders by email
-    grouped = defaultdict(list)
+    # 🔹 Group emails
+    stage_2_days = defaultdict(list)
+    stage_1_day = defaultdict(list)
+    stage_today = defaultdict(list)
+
     for r in reminders:
-        grouped[r.email].append(r)
+        days_left = (r.stockout_date - today).days
 
-    # 🔹 Send ONE email per user
-    for email, user_reminders in grouped.items():
-        product_list = "\n".join(
-            f"• {r.product_name}" for r in user_reminders
+        if days_left == 2:
+            stage_2_days[r.email].append(r)
+
+        elif days_left == 1:
+            stage_1_day[r.email].append(r)
+
+        elif days_left == 0:
+            stage_today[r.email].append(r)
+
+    # 🔔 SEND 2-DAY MAILS
+    for email, items in stage_2_days.items():
+        product_list = "\n".join(f"• {r.product_name}" for r in items)
+
+        send_email(
+            email,
+            "Upcoming Stockout Alert (2 Days Left)",
+            f"""
+Hello,
+
+The following product(s) are expected to run out of stock in 2 days:
+
+{product_list}
+
+Please plan inventory accordingly.
+
+– InventOPredict Team
+"""
         )
 
-        subject = f"Stockout Alert – {len(user_reminders)} Product(s)"
+        for r in items:
+            r.reminder_stage = 1
 
-        body = f"""
+    # 🔔 SEND 1-DAY MAILS
+    for email, items in stage_1_day.items():
+        product_list = "\n".join(f"• {r.product_name}" for r in items)
+
+        send_email(
+            email,
+            "Stockout Alert (1 Day Left)",
+            f"""
+Hello,
+
+The following product(s) are expected to run out of stock tomorrow:
+
+{product_list}
+
+Immediate action is recommended.
+
+– InventOPredict Team
+"""
+        )
+
+        for r in items:
+            r.reminder_stage = 2
+
+    # 🔔 SEND TODAY MAILS + DELETE
+    for email, items in stage_today.items():
+        product_list = "\n".join(f"• {r.product_name}" for r in items)
+
+        send_email(
+            email,
+            "Stockout Alert (Today)",
+            f"""
 Hello,
 
 The following product(s) are expected to run out of stock today:
 
 {product_list}
 
-Please take necessary action to avoid stock issues.
+Please take urgent action.
 
 – InventOPredict Team
 """
+        )
 
-        send_email(email, subject, body)
-
-        # Mark all reminders as sent
-        for r in user_reminders:
-            r.sent = True
+        for r in items:
+            db.session.delete(r)
 
     db.session.commit()
+    print("✅ Reminder cycle completed")
 
 
+from apscheduler.schedulers.background import BackgroundScheduler
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(check_and_send_reminders, "interval", hours=24)
+scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+
+scheduler.add_job(
+    check_and_send_reminders,
+    trigger="cron",
+    hour=9,
+    minute=0
+)
+
 scheduler.start()
 
 
+
+
+def clear_stockout_reminders():
+    deleted = StockoutReminder.query.delete()
+    db.session.commit()
+    print(f"🧹 Cleared {deleted} stockout reminder(s)")
+
+
+
+@app.route("/clear-reminders", methods=["GET"])
+def clear_reminders_route():
+    clear_stockout_reminders()
+    return "Reminders cleared"
+# http://127.0.0.1:5000/clear-reminders(clear the table)
 # ---------------- Run App ----------------
 if __name__ == '__main__':
     app.run(debug=True)
